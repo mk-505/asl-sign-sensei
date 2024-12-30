@@ -8,7 +8,7 @@ export type Lesson = {
   totalSigns: number;
 };
 
-const LESSONS: Lesson[] = [
+export const LESSONS: Lesson[] = [
   {
     id: "alphabet",
     title: "Alphabet (A-Z)",
