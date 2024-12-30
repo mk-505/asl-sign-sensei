@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import * as handpose from '@tensorflow-models/handpose';
+import * as tf from '@tensorflow/tfjs';
+import '@tensorflow/tfjs-backend-webgl';
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -23,6 +25,10 @@ const Practice = () => {
   useEffect(() => {
     const loadModel = async () => {
       try {
+        // Set the backend and wait for it to initialize
+        await tf.setBackend('webgl');
+        console.log('TensorFlow backend initialized:', tf.getBackend());
+        
         const loadedModel = await handpose.load();
         setModel(loadedModel);
         setIsModelLoading(false);
