@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Navigation from "./components/Navigation";
 import Home from "./pages/Home";
+import LessonsList from "./components/LessonsList";
+import LessonViewer from "./components/LessonViewer";
 
 const queryClient = new QueryClient();
 
@@ -17,6 +19,8 @@ const App = () => (
         <Navigation />
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/learn" element={<LessonsList />} />
+          <Route path="/learn/:lessonId" element={<LessonViewer />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
