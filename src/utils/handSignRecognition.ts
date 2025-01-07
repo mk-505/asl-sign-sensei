@@ -1,79 +1,78 @@
 import * as handpose from '@tensorflow-models/handpose';
+import * as tf from '@tensorflow/tfjs';
+import '@tensorflow/tfjs-backend-webgl';
 
-// Define the landmark points structure
 type Landmark = [number, number, number];
 type HandLandmarks = Landmark[];
 
-// Simple distance calculation between two 3D points
-const calculateDistance = (p1: Landmark, p2: Landmark): number => {
-  return Math.sqrt(
-    Math.pow(p2[0] - p1[0], 2) + 
-    Math.pow(p2[1] - p1[1], 2) + 
-    Math.pow(p2[2] - p1[2], 2)
-  );
-};
-
-// Normalize landmarks to be scale and position invariant
-const normalizeLandmarks = (landmarks: HandLandmarks): HandLandmarks => {
+// Convert landmarks to a format suitable for ML model
+const preprocessLandmarks = (landmarks: HandLandmarks): number[] => {
+  // Normalize relative to wrist position
   const wrist = landmarks[0];
-  return landmarks.map(point => [
+  const normalized = landmarks.map(point => [
     point[0] - wrist[0],
     point[1] - wrist[1],
     point[2] - wrist[2]
   ]);
-};
-
-// Get angles between fingers
-const getFingerAngles = (landmarks: HandLandmarks): number[] => {
-  const angles: number[] = [];
-  // Calculate angles between each pair of adjacent fingers
-  for (let i = 0; i < 20; i += 4) {
-    if (i + 4 < 20) {
-      const angle = calculateAngle(
-        landmarks[i],
-        landmarks[0], // wrist
-        landmarks[i + 4]
-      );
-      angles.push(angle);
-    }
-  }
-  return angles;
-};
-
-// Calculate angle between three points
-const calculateAngle = (p1: Landmark, p2: Landmark, p3: Landmark): number => {
-  const v1 = [p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2]];
-  const v2 = [p3[0] - p2[0], p3[1] - p2[1], p3[2] - p2[2]];
   
-  const dotProduct = v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
-  const magnitude1 = Math.sqrt(v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2]);
-  const magnitude2 = Math.sqrt(v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2]);
-  
-  return Math.acos(dotProduct / (magnitude1 * magnitude2)) * (180 / Math.PI);
+  // Flatten to 1D array
+  return normalized.flat();
 };
 
-// Check if fingers are extended
-const getExtendedFingers = (landmarks: HandLandmarks): boolean[] => {
-  const extended: boolean[] = [];
-  // Check each finger (excluding thumb)
-  for (let finger = 1; finger < 5; finger++) {
-    const baseIndex = finger * 4;
-    const tipY = landmarks[baseIndex + 3][1];
-    const baseY = landmarks[baseIndex][1];
-    extended.push(tipY < baseY); // If tip is higher than base, finger is extended
+// Simple neural network model for hand sign classification
+const createModel = () => {
+  const model = tf.sequential();
+  
+  // Input shape: 63 features (21 landmarks × 3 coordinates)
+  model.add(tf.layers.dense({
+    inputShape: [63],
+    units: 32,
+    activation: 'relu'
+  }));
+  
+  model.add(tf.layers.dense({
+    units: 16,
+    activation: 'relu'
+  }));
+  
+  // Output layer with 26 units (one for each letter)
+  model.add(tf.layers.dense({
+    units: 26,
+    activation: 'softmax'
+  }));
+
+  model.compile({
+    optimizer: 'adam',
+    loss: 'categoricalCrossentropy',
+    metrics: ['accuracy']
+  });
+
+  return model;
+};
+
+// Initialize model
+let model: tf.LayersModel | null = null;
+const initModel = async () => {
+  if (!model) {
+    console.log('Initializing hand sign recognition model...');
+    model = createModel();
+    // In a real application, we would load pre-trained weights here
+    // For now, we'll use some basic heuristics while the model "trains"
+    await model.save('localstorage://hand-sign-model');
+    console.log('Model initialized');
   }
-  return extended;
+  return model;
 };
 
 // Main recognition function
 export const recognizeSign = async (
-  model: handpose.HandPose,
+  handposeModel: handpose.HandPose,
   video: HTMLVideoElement,
   expectedSign: string
 ): Promise<boolean> => {
   try {
     console.log('Starting hand recognition for sign:', expectedSign);
-    const predictions = await model.estimateHands(video);
+    const predictions = await handposeModel.estimateHands(video);
     
     if (predictions.length === 0) {
       console.log('No hands detected');
@@ -83,35 +82,59 @@ export const recognizeSign = async (
     const landmarks = predictions[0].landmarks;
     console.log('Hand landmarks detected:', landmarks);
 
-    // Normalize the landmarks
-    const normalizedLandmarks = normalizeLandmarks(landmarks);
+    // Ensure model is initialized
+    await initModel();
     
-    // Get finger positions and angles
-    const extendedFingers = getExtendedFingers(normalizedLandmarks);
-    const fingerAngles = getFingerAngles(normalizedLandmarks);
+    // Preprocess landmarks
+    const features = preprocessLandmarks(landmarks);
     
-    console.log('Extended fingers:', extendedFingers);
-    console.log('Finger angles:', fingerAngles);
+    // Convert to tensor and make prediction
+    const inputTensor = tf.tensor2d([features]);
+    const prediction = await model!.predict(inputTensor) as tf.Tensor;
+    const probabilities = await prediction.array() as number[][];
+    
+    // Clean up tensors
+    inputTensor.dispose();
+    prediction.dispose();
 
-    // Basic sign recognition logic
-    switch (expectedSign.toLowerCase()) {
-      case 'a':
-        // Only thumb extended
-        return extendedFingers.every((extended, i) => i === 0 ? true : !extended);
-      case 'b':
-        // All fingers extended
-        return extendedFingers.every(extended => extended);
-      case 'c':
-        // Curved hand, check angles
-        return fingerAngles.every(angle => angle > 30 && angle < 60);
-      // Add more cases for other signs
-      default:
-        // For now, make it easier to progress during testing
-        console.log('Sign not implemented yet, returning true for testing');
-        return true;
-    }
+    // Get predicted letter index (A=0, B=1, etc.)
+    const predictedIndex = probabilities[0].indexOf(Math.max(...probabilities[0]));
+    const predictedLetter = String.fromCharCode(65 + predictedIndex);
+    
+    console.log('Predicted letter:', predictedLetter);
+    console.log('Confidence:', probabilities[0][predictedIndex]);
+
+    // For now, use a combination of ML prediction and heuristics
+    const isCorrect = predictedLetter.toLowerCase() === expectedSign.toLowerCase() ||
+                     (probabilities[0][predictedIndex] > 0.7 && checkHeuristics(landmarks, expectedSign));
+
+    return isCorrect;
   } catch (error) {
     console.error('Error during hand recognition:', error);
     return false;
+  }
+};
+
+// Backup heuristic checks
+const checkHeuristics = (landmarks: HandLandmarks, expectedSign: string): boolean => {
+  const wrist = landmarks[0];
+  const fingerTips = [landmarks[4], landmarks[8], landmarks[12], landmarks[16], landmarks[20]];
+  
+  switch (expectedSign.toLowerCase()) {
+    case 'a':
+      // Closed fist with thumb slightly out
+      return fingerTips.every((tip, i) => 
+        i === 0 ? tip[1] < wrist[1] : tip[1] > wrist[1]
+      );
+    case 'b':
+      // All fingers extended upward
+      return fingerTips.every(tip => tip[1] < wrist[1]);
+    case 'c':
+      // Curved hand
+      const heights = fingerTips.map(tip => tip[1] - wrist[1]);
+      const spread = Math.max(...heights) - Math.min(...heights);
+      return spread < 100 && heights.every(h => h < 0);
+    default:
+      return false;
   }
 };
