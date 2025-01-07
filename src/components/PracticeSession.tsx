@@ -54,7 +54,12 @@ const PracticeSession = ({ lesson, model, onComplete }: PracticeSessionProps) =>
         }
       }, 500);
     } else {
-      // Reset timer for current sign
+      // Timer ran out - move to next sign without increasing progress
+      toast({
+        title: "Time's up!",
+        description: "Moving to next sign. Keep practicing!",
+      });
+      setCurrentSignIndex(prev => (prev + 1) % lesson.totalSigns);
       setTimeLeft(15);
     }
 
@@ -67,7 +72,8 @@ const PracticeSession = ({ lesson, model, onComplete }: PracticeSessionProps) =>
   const handleCorrectSign = () => {
     const newCompletedSigns = [...completedSigns, currentSignIndex];
     setCompletedSigns(newCompletedSigns);
-    setProgress((newCompletedSigns.length * 100) / lesson.totalSigns);
+    const newProgress = (newCompletedSigns.length * 100) / lesson.totalSigns;
+    setProgress(newProgress);
     
     toast({
       title: "Correct!",
@@ -85,8 +91,13 @@ const PracticeSession = ({ lesson, model, onComplete }: PracticeSessionProps) =>
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <Progress value={progress} className="w-full max-w-md" />
-        <span className="ml-4 font-mono">{timeLeft}s</span>
+        <div className="flex-1 mr-4">
+          <Progress value={progress} className="w-full" />
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="font-mono text-sm">{Math.round(progress)}%</span>
+          <span className="font-mono text-sm">{timeLeft}s</span>
+        </div>
       </div>
 
       <div className="text-center mb-4">
