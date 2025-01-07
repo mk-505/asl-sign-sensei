@@ -5,11 +5,12 @@ import HandCamera from './HandCamera';
 import { recognizeSign } from '@/utils/handSignRecognition';
 import type { HandPose } from '@tensorflow-models/handpose';
 import type { Lesson } from './LessonsList';
+import type { PracticeResult } from '@/types/practice';
 
 interface PracticeSessionProps {
   lesson: Lesson;
   model: HandPose;
-  onComplete: () => void;
+  onComplete: (result: PracticeResult) => void;
 }
 
 const PracticeSession = ({ lesson, model, onComplete }: PracticeSessionProps) => {
@@ -18,6 +19,7 @@ const PracticeSession = ({ lesson, model, onComplete }: PracticeSessionProps) =>
   const [timeLeft, setTimeLeft] = useState(15);
   const [progress, setProgress] = useState(0);
   const [completedSigns, setCompletedSigns] = useState<number[]>([]);
+  const [incorrectSigns, setIncorrectSigns] = useState<number[]>([]);
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
 
   // Get current sign based on lesson type
@@ -55,6 +57,9 @@ const PracticeSession = ({ lesson, model, onComplete }: PracticeSessionProps) =>
       }, 500);
     } else {
       // Timer ran out - move to next sign without increasing progress
+      if (!completedSigns.includes(currentSignIndex) && !incorrectSigns.includes(currentSignIndex)) {
+        setIncorrectSigns(prev => [...prev, currentSignIndex]);
+      }
       toast({
         title: "Time's up!",
         description: "Moving to next sign. Keep practicing!",
@@ -80,8 +85,28 @@ const PracticeSession = ({ lesson, model, onComplete }: PracticeSessionProps) =>
       description: "Great job! Moving to next sign...",
     });
     
-    if (newCompletedSigns.length === lesson.totalSigns) {
-      onComplete();
+    if (newCompletedSigns.length + incorrectSigns.length === lesson.totalSigns) {
+      // Practice session complete - prepare results
+      const correctSignsList = newCompletedSigns.map(index => getCurrentSign());
+      const incorrectSignsList = incorrectSigns.map(index => getCurrentSign());
+      
+      const result: PracticeResult = {
+        id: Date.now().toString(),
+        lessonId: lesson.id,
+        lessonTitle: lesson.title,
+        date: new Date().toISOString(),
+        correctSigns: correctSignsList,
+        incorrectSigns: incorrectSignsList,
+        score: (newCompletedSigns.length * 100) / lesson.totalSigns
+      };
+
+      // Show summary toast
+      toast({
+        title: "Practice Complete!",
+        description: `Correct: ${correctSignsList.join(', ')}\nIncorrect: ${incorrectSignsList.join(', ')}`,
+      });
+
+      onComplete(result);
     } else {
       setCurrentSignIndex(prev => (prev + 1) % lesson.totalSigns);
       setTimeLeft(15);

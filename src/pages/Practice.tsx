@@ -13,6 +13,8 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { LESSONS } from '@/components/LessonsList';
 import PracticeSession from '@/components/PracticeSession';
+import PracticeHistory from '@/components/PracticeHistory';
+import type { PracticeResult } from '@/types/practice';
 
 const Practice = () => {
   const { toast } = useToast();
@@ -20,12 +22,17 @@ const Practice = () => {
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [isGameActive, setIsGameActive] = useState(false);
   const [model, setModel] = useState<handpose.HandPose | null>(null);
+  const [practiceHistory, setPracticeHistory] = useState<PracticeResult[]>([]);
 
-  // Initialize TensorFlow model
   useEffect(() => {
+    // Load practice history from localStorage
+    const savedHistory = localStorage.getItem('practiceHistory');
+    if (savedHistory) {
+      setPracticeHistory(JSON.parse(savedHistory));
+    }
+
     const loadModel = async () => {
       try {
-        // Set the backend and wait for it to initialize
         await tf.setBackend('webgl');
         console.log('TensorFlow backend initialized:', tf.getBackend());
         
@@ -46,12 +53,17 @@ const Practice = () => {
     loadModel();
   }, []);
 
-  const handleComplete = () => {
+  const handleComplete = (result: PracticeResult) => {
     setIsGameActive(false);
-    const lessonTitle = LESSONS.find(l => l.id === selectedLesson)?.title;
+    
+    // Update practice history
+    const newHistory = [result, ...practiceHistory];
+    setPracticeHistory(newHistory);
+    localStorage.setItem('practiceHistory', JSON.stringify(newHistory));
+
     toast({
       title: "Practice Complete!",
-      description: `You completed the ${lessonTitle} practice session!`,
+      description: `You completed the ${result.lessonTitle} practice session with ${Math.round(result.score)}% accuracy!`,
     });
   };
 
@@ -95,6 +107,8 @@ const Practice = () => {
           >
             {isModelLoading ? "Loading Model..." : "Start Practice"}
           </Button>
+
+          <PracticeHistory results={practiceHistory} />
         </div>
       ) : (
         model && selectedLessonData && (
