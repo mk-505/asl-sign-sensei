@@ -17,7 +17,23 @@ const PracticeSession = ({ lesson, model, onComplete }: PracticeSessionProps) =>
   const [currentSignIndex, setCurrentSignIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(15);
   const [progress, setProgress] = useState(0);
+  const [completedSigns, setCompletedSigns] = useState<number[]>([]);
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
+
+  // Get current sign based on lesson type
+  const getCurrentSign = () => {
+    switch (lesson.id) {
+      case 'alphabet':
+        return String.fromCharCode(65 + currentSignIndex); // A-Z
+      case 'numbers':
+        return currentSignIndex.toString(); // 0-9
+      case 'greetings':
+        const greetings = ['Hello', 'Hi', 'Good Morning', 'Good Night', 'Thank You', 'Please', 'Sorry', 'Goodbye'];
+        return greetings[currentSignIndex];
+      default:
+        return '';
+    }
+  };
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -32,36 +48,37 @@ const PracticeSession = ({ lesson, model, onComplete }: PracticeSessionProps) =>
       recognitionInterval = setInterval(async () => {
         if (!videoElement || !model) return;
 
-        const isCorrect = await recognizeSign(model, videoElement, "current-sign");
-        if (isCorrect) {
+        const isCorrect = await recognizeSign(model, videoElement, getCurrentSign());
+        if (isCorrect && !completedSigns.includes(currentSignIndex)) {
           handleCorrectSign();
         }
       }, 500);
     } else {
-      handleNextSign();
+      // Reset timer for current sign
+      setTimeLeft(15);
     }
 
     return () => {
       clearInterval(timer);
       clearInterval(recognitionInterval);
     };
-  }, [timeLeft, videoElement, model]);
+  }, [timeLeft, videoElement, model, currentSignIndex, completedSigns]);
 
   const handleCorrectSign = () => {
+    const newCompletedSigns = [...completedSigns, currentSignIndex];
+    setCompletedSigns(newCompletedSigns);
+    setProgress((newCompletedSigns.length * 100) / lesson.totalSigns);
+    
     toast({
       title: "Correct!",
       description: "Great job! Moving to next sign...",
     });
-    handleNextSign();
-  };
-
-  const handleNextSign = () => {
-    if (currentSignIndex + 1 >= lesson.totalSigns) {
+    
+    if (newCompletedSigns.length === lesson.totalSigns) {
       onComplete();
     } else {
-      setCurrentSignIndex(prev => prev + 1);
+      setCurrentSignIndex(prev => (prev + 1) % lesson.totalSigns);
       setTimeLeft(15);
-      setProgress((currentSignIndex + 1) * 100 / lesson.totalSigns);
     }
   };
 
@@ -70,6 +87,11 @@ const PracticeSession = ({ lesson, model, onComplete }: PracticeSessionProps) =>
       <div className="flex justify-between items-center">
         <Progress value={progress} className="w-full max-w-md" />
         <span className="ml-4 font-mono">{timeLeft}s</span>
+      </div>
+
+      <div className="text-center mb-4">
+        <h2 className="text-2xl font-bold mb-2">Current Sign:</h2>
+        <p className="text-4xl font-mono">{getCurrentSign()}</p>
       </div>
 
       <div className="relative aspect-video max-w-2xl mx-auto bg-black rounded-lg overflow-hidden">
