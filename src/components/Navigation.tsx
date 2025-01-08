@@ -1,7 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 
 const Navigation = () => {
   const location = useLocation();
+  const { user, signOut } = useAuth();
   
   const isActive = (path: string) => location.pathname === path;
   
@@ -46,6 +49,39 @@ const Navigation = () => {
             >
               Practice
             </Link>
+            
+            {user ? (
+              <Button
+                variant="ghost"
+                onClick={() => signOut()}
+                className="text-sm font-medium text-gray-500 hover:text-gray-900"
+              >
+                Sign Out
+              </Button>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
+                    isActive("/login")
+                      ? "text-gray-900 border-b-2 border-gray-900"
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/signup"
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
+                    isActive("/signup")
+                      ? "text-gray-900 border-b-2 border-gray-900"
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
