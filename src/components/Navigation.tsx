@@ -1,6 +1,14 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { User } from "lucide-react";
 
 const Navigation = () => {
   const location = useLocation();
@@ -18,7 +26,7 @@ const Navigation = () => {
             </Link>
           </div>
           
-          <div className="flex space-x-8">
+          <div className="flex items-center space-x-8">
             <Link
               to="/"
               className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
@@ -51,13 +59,25 @@ const Navigation = () => {
             </Link>
             
             {user ? (
-              <Button
-                variant="ghost"
-                onClick={() => signOut()}
-                className="text-sm font-medium text-gray-500 hover:text-gray-900"
-              >
-                Sign Out
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>
+                        <User className="h-4 w-4" />
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile">Profile Settings</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => signOut()}>
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <>
                 <Link

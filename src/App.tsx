@@ -8,6 +8,7 @@ import Navigation from "./components/Navigation";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
+import Profile from "./pages/Profile";
 import LessonsList from "./components/LessonsList";
 import LessonViewer from "./components/LessonViewer";
 import Practice from "./pages/Practice";
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/learn" element={<LessonsList />} />
             <Route path="/learn/:lessonId" element={<LessonViewer />} />
             <Route path="/practice" element={<Practice />} />
