@@ -18,29 +18,36 @@ const Profile = () => {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Move navigation to useEffect
   useEffect(() => {
     if (!user) {
       navigate("/login");
-    } else {
-      // Fetch existing profile data
-      const fetchProfile = async () => {
-        try {
-          const { data, error } = await supabase
-            .from("profiles")
-            .select("full_name")
-            .eq("id", user.id)
-            .single();
-
-          if (error) throw error;
-          if (data) setFullName(data.full_name || "");
-        } catch (error) {
-          console.error("Error fetching profile:", error);
-        }
-      };
-
-      fetchProfile();
+      return;
     }
+
+    const fetchProfile = async () => {
+      try {
+        console.log("Fetching profile for user:", user.id);
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching profile:", error);
+          return;
+        }
+
+        console.log("Profile data:", data);
+        if (data) {
+          setFullName(data.full_name || "");
+        }
+      } catch (error) {
+        console.error("Error in fetchProfile:", error);
+      }
+    };
+
+    fetchProfile();
   }, [user, navigate]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -49,11 +56,19 @@ const Profile = () => {
 
     try {
       setLoading(true);
+      console.log("Updating profile for user:", user.id);
+      
       const { error } = await supabase
         .from("profiles")
-        .upsert({ id: user.id, full_name: fullName });
+        .upsert({ 
+          id: user.id, 
+          full_name: fullName,
+          updated_at: new Date().toISOString()
+        });
 
       if (error) throw error;
+      
+      console.log("Profile updated successfully");
       toast.success("Profile updated successfully!");
     } catch (error) {
       console.error("Error updating profile:", error);
