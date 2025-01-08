@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { createClient } from "@supabase/supabase-js";
 
+// Initialize Supabase client once
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -16,6 +17,31 @@ const Profile = () => {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Move navigation to useEffect
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+    } else {
+      // Fetch existing profile data
+      const fetchProfile = async () => {
+        try {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .single();
+
+          if (error) throw error;
+          if (data) setFullName(data.full_name || "");
+        } catch (error) {
+          console.error("Error fetching profile:", error);
+        }
+      };
+
+      fetchProfile();
+    }
+  }, [user, navigate]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +63,7 @@ const Profile = () => {
     }
   };
 
-  if (!user) {
-    navigate("/login");
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <div className="container max-w-2xl mx-auto pt-20 px-4">
