@@ -49,10 +49,15 @@ const Profile = () => {
           if (error.code === 'PGRST116') {
             const { error: insertError } = await supabase
               .from('profiles')
-              .insert({ id: user.id, full_name: '' });
+              .insert([{ 
+                id: user.id, 
+                full_name: '',
+                updated_at: new Date().toISOString()
+              }]);
             
             if (insertError) {
               console.error("Error creating profile:", insertError);
+              toast.error("Error creating profile");
             }
           }
           return;
@@ -80,11 +85,11 @@ const Profile = () => {
       
       const { error } = await supabase
         .from('profiles')
-        .upsert({ 
+        .upsert([{ 
           id: user.id, 
           full_name: fullName,
           updated_at: new Date().toISOString()
-        });
+        }]);
 
       if (error) {
         console.error("Error updating profile:", {
