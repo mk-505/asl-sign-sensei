@@ -6,10 +6,15 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { createClient } from "@supabase/supabase-js";
 
-// Initialize Supabase client once
+// Initialize Supabase client
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
+  import.meta.env.VITE_SUPABASE_ANON_KEY,
+  {
+    db: {
+      schema: 'public'
+    }
+  }
 );
 
 const Profile = () => {
@@ -28,13 +33,28 @@ const Profile = () => {
       try {
         console.log("Fetching profile for user:", user.id);
         const { data, error } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", user.id)
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
           .single();
 
         if (error) {
-          console.error("Error fetching profile:", error);
+          console.error("Error fetching profile:", {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          // Create profile if it doesn't exist
+          if (error.code === 'PGRST116') {
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert({ id: user.id, full_name: '' });
+            
+            if (insertError) {
+              console.error("Error creating profile:", insertError);
+            }
+          }
           return;
         }
 
@@ -59,14 +79,22 @@ const Profile = () => {
       console.log("Updating profile for user:", user.id);
       
       const { error } = await supabase
-        .from("profiles")
+        .from('profiles')
         .upsert({ 
           id: user.id, 
           full_name: fullName,
           updated_at: new Date().toISOString()
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating profile:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
       
       console.log("Profile updated successfully");
       toast.success("Profile updated successfully!");
