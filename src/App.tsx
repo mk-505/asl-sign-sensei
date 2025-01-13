@@ -19,20 +19,24 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Navigation />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/learn" element={<LessonsList />} />
-            <Route path="/learn/:lessonId" element={<LessonViewer />} />
-            <Route path="/practice" element={<Practice />} />
-          </Routes>
-        </BrowserRouter>
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Navigation />
+            <main className="pt-16">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<SignUp />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/learn" element={<LessonsList />} />
+                <Route path="/learn/:lessonId" element={<LessonViewer />} />
+                <Route path="/practice" element={<Practice />} />
+              </Routes>
+            </main>
+          </BrowserRouter>
+        </div>
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
